@@ -18,6 +18,8 @@ const userSchema = new mongoose.Schema({
     password: String
 });
 
+const User = new mongoose.model("User", userSchema);
+
 app.get("/", (req, res) => {
     res.render("home");
 });
@@ -37,6 +39,39 @@ app.get("/secrets", (req, res) => {
 app.get("/submit", (req, res) => {
     res.render("submit");
 });
+
+app.post("/register", (req, res) => {
+   const newUser = new User({
+    email: req.body.username,
+    password: req.body.password
+   });
+   
+   newUser.save((err) => {
+    err ? console.log(err) : res.render("secrets");
+   });
+});
+
+app.post("/login", (req, res) => {
+    const username = req.body.username;
+    const password = req.body.password;
+
+    User.findOne({email: username}, (err, foundUser) => {
+        if(err){
+            console.log(err);
+        } else {
+            if(foundUser){
+                if(foundUser.password === password){
+                    res.render("secrets");
+                } else {
+                    res.send("Wrong pass or email");
+                }
+            } else {
+                res.send("did not find that user");
+            }
+        }
+    })
+});
+
 
 
 app.listen(3000, ()=>{
