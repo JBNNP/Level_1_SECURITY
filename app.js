@@ -34,8 +34,9 @@ mongoose.connect("mongodb://localhost:27017/userDB");
 const userSchema = new mongoose.Schema({
     email: String,
     password: String,
-    googleId: String,   
-    facebookId: String
+    googleId: String,
+    facebookId: String,
+    secret: String
 });
 
 //PLUGINS
@@ -80,7 +81,6 @@ passport.use(new FacebookStrategy({
     callbackURL: "http://localhost:3000/auth/facebook/callback"
 },
     function (accessToken, refreshToken, profile, cb) {
-        console.log(profile);
         User.findOrCreate({ facebookId: profile.id }, function (err, user) {
             return cb(err, user);
         });
@@ -124,8 +124,29 @@ app.get("/register", (req, res) => {
 });
 
 app.get("/submit", (req, res) => {
-    res.render("submit");
+    if (req.isAuthenticated()) {
+        res.render("submit");
+    } else {
+        res.redirect("/login");
+    }
 });
+
+app.post("/submit", (req, res) => {
+    const submittedSecret = req.body.secret;
+
+    User.findById(req.user.id, (err, foundUser) => {
+        if (err) {
+            console.log(err);
+        } else {
+            if (foundUser) {
+                foundUser.secret = submittedSecret;
+                foundUser.save(function () {
+                    res.redirect("/secrets");
+                });
+            }
+        }
+    })
+})
 
 app.get("/logout", (req, res) => {
     req.logout((err) => {
@@ -148,12 +169,18 @@ app.post("/register", (req, res) => {
     })
 });
 
+
 app.get("/secrets", (req, res) => {
-    if (req.isAuthenticated()) {
-        res.render("secrets");
-    } else {
-        res.redirect("/login");
-    }
+    User.find({secret: {$ne:null}}, (err, foundSecrets) => {
+        if(err){
+            console.log(err);
+        } else {
+            if(foundSecrets){
+                console.log(foundSecrets);
+                res.render("secrets", {usersWithSecrets: foundSecrets});
+            }
+        }
+    })
 });
 
 app.post("/login", (req, res) => {
